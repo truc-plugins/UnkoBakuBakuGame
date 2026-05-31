@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>💩 うんこバクバクゲーム</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -14,31 +14,38 @@
     justify-content: center;
     min-height: 100vh;
     font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+    touch-action: none;
+    overflow: hidden;
   }
   h1 {
-    font-size: 22px;
+    font-size: clamp(14px, 4vw, 22px);
     font-weight: 700;
     color: #7a4500;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     letter-spacing: 0.05em;
   }
   #hud {
     display: flex;
-    gap: 24px;
-    margin-bottom: 10px;
-    font-size: 15px;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-size: clamp(12px, 3.5vw, 15px);
     font-weight: 600;
     color: #5a3300;
   }
-  #hud span { font-weight: 400; color: #a07040; font-size: 13px; }
+  #hud span { font-weight: 400; color: #a07040; font-size: 0.85em; }
   #canvas-wrap {
     position: relative;
     border-radius: 12px;
     border: 2px solid #e8d8a0;
     overflow: hidden;
     box-shadow: 0 4px 24px rgba(120,80,0,0.12);
+    width: min(560px, 100vw - 16px);
   }
-  canvas { display: block; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
   #overlay {
     position: absolute;
     inset: 0;
@@ -49,27 +56,28 @@
     background: rgba(255,251,230,0.92);
     color: #5a3300;
   }
-  #overlay h2 { font-size: 24px; font-weight: 700; margin: 0 0 8px; }
-  #overlay p { font-size: 14px; color: #a07040; margin: 0 0 20px; text-align: center; line-height: 1.8; }
+  #overlay h2 { font-size: clamp(16px, 4vw, 24px); font-weight: 700; margin: 0 0 8px; }
+  #overlay p { font-size: clamp(11px, 3vw, 14px); color: #a07040; margin: 0 0 20px; text-align: center; line-height: 1.8; padding: 0 12px; }
   #overlay button {
     padding: 12px 36px;
     border-radius: 8px;
     border: 2px solid #c8a060;
     background: #fff8e1;
     color: #7a4500;
-    font-size: 16px;
+    font-size: clamp(14px, 4vw, 16px);
     font-weight: 700;
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
     font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
   }
-  #overlay button:hover { background: #ffefc0; transform: scale(1.04); }
+  #overlay button:active { background: #ffefc0; transform: scale(1.04); }
   #msg {
     position: absolute;
     top: 10px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 20px;
+    font-size: clamp(14px, 4vw, 20px);
     font-weight: 700;
     pointer-events: none;
     opacity: 0;
@@ -78,9 +86,45 @@
     white-space: nowrap;
   }
   #info {
-    margin-top: 10px;
-    font-size: 12px;
+    margin-top: 8px;
+    font-size: clamp(10px, 2.5vw, 12px);
     color: #b09060;
+    text-align: center;
+  }
+  /* バーチャルDパッド */
+  #dpad {
+    display: none;
+    margin-top: 16px;
+    position: relative;
+    width: 140px;
+    height: 140px;
+    flex-shrink: 0;
+  }
+  #dpad button {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    border: 2px solid #c8a060;
+    background: rgba(255,248,225,0.9);
+    color: #7a4500;
+    font-size: 20px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #dpad button:active, #dpad button.pressed { background: #ffd080; }
+  #btn-up    { top: 0;   left: 50%; transform: translateX(-50%); }
+  #btn-down  { bottom: 0; left: 50%; transform: translateX(-50%); }
+  #btn-left  { left: 0;  top: 50%; transform: translateY(-50%); }
+  #btn-right { right: 0; top: 50%; transform: translateY(-50%); }
+  @media (pointer: coarse) {
+    #dpad { display: flex; }
+    body { justify-content: flex-start; padding-top: 12px; overflow-y: auto; }
   }
 </style>
 </head>
@@ -96,11 +140,17 @@
   <div id="msg"></div>
   <div id="overlay">
     <h2>💩 うんこバクバクゲーム 💩</h2>
-    <p>矢印キーで動いてうんこを食べまくれ！<br>💣 爆弾に当たると一機失うぞ！</p>
+    <p>うんこを食べまくれ！💣 爆弾は避けろ！<br>📱 画面をドラッグして操作<br>⌨️ 矢印キーでも操作できるよ</p>
     <button onclick="startGame()">スタート！</button>
   </div>
 </div>
-<div id="info">矢印キーで操作 | うんこ食べてスコアアップ | 爆弾は避けろ！</div>
+<div id="info">📱 ドラッグ or Dパッドで操作 | ⌨️ 矢印キーでも OK</div>
+<div id="dpad">
+  <button id="btn-up"    aria-label="上">▲</button>
+  <button id="btn-left"  aria-label="左">◀</button>
+  <button id="btn-right" aria-label="右">▶</button>
+  <button id="btn-down"  aria-label="下">▼</button>
+</div>
 
 <script>
 const canvas = document.getElementById('gc');
@@ -111,6 +161,50 @@ let state = 'idle';
 let score = 0, level = 1, lives = 3;
 let player, unkos, bombs, particles, frame, animId;
 let keys = {};
+
+// タッチ操作
+let touchTarget = null;
+
+function getCanvasPos(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left) * (W / rect.width),
+    y: (clientY - rect.top)  * (H / rect.height)
+  };
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (state !== 'playing') return;
+  touchTarget = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (state !== 'playing') return;
+  touchTarget = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  touchTarget = null;
+}, { passive: false });
+
+// バーチャルDパッド
+const dpadMap = {
+  'btn-up':    'ArrowUp',
+  'btn-down':  'ArrowDown',
+  'btn-left':  'ArrowLeft',
+  'btn-right': 'ArrowRight'
+};
+for (const [id, key] of Object.entries(dpadMap)) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true;  btn.classList.add('pressed'); },    { passive: false });
+  btn.addEventListener('touchend',   e => { e.preventDefault(); keys[key] = false; btn.classList.remove('pressed'); }, { passive: false });
+  btn.addEventListener('mousedown',  () => { keys[key] = true;  btn.classList.add('pressed'); });
+  btn.addEventListener('mouseup',    () => { keys[key] = false; btn.classList.remove('pressed'); });
+  btn.addEventListener('mouseleave', () => { keys[key] = false; btn.classList.remove('pressed'); });
+}
 
 document.addEventListener('keydown', e => {
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
@@ -124,6 +218,7 @@ function startGame() {
   player = { x: W/2, y: H/2, vx: 0, vy: 0, invincible: 0 };
   unkos = []; bombs = []; particles = [];
   frame = 0;
+  touchTarget = null;
   updateHUD();
   if(animId) cancelAnimationFrame(animId);
   state = 'playing';
@@ -229,6 +324,19 @@ function loop() {
   frame++;
 
   const speed = 2.8 + level*0.2;
+
+  // タッチ操作：タッチ位置へ向かう
+  if (touchTarget) {
+    const dx = touchTarget.x - player.x;
+    const dy = touchTarget.y - player.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d > 8) {
+      player.vx += (dx / d) * 0.6;
+      player.vy += (dy / d) * 0.6;
+    }
+  }
+
+  // キーボード / Dパッド操作
   if(keys['ArrowLeft'])  player.vx -= 0.5;
   if(keys['ArrowRight']) player.vx += 0.5;
   if(keys['ArrowUp'])    player.vy -= 0.5;
