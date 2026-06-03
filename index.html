@@ -438,7 +438,7 @@ function loopSolo() {
   if(frame%(interval+20)===0) spawnBomb();
   if(frame>=5400){
     if(frame%300===150) spawnSpecialUnko(Math.random()<0.5?'slow':'fast');
-    if(lives<3 && Math.random()<1/300) spawnSpecialUnko('oneup');
+    if(lives<3 && Math.random()<1/1800) spawnSpecialUnko('oneup');
     if(frame>=10800 && Math.random()<1/300) spawnSpecialUnko('hell');
   }
 
