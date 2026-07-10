@@ -185,7 +185,7 @@
 </div>
 <div id="joy-zone">
   <div id="joy-hint">👆 ここに指を置いて動かす</div>
-  <div id="joy-base"><div id="joy-knob">😮</div></div>
+  <div id="joy-base"><div id="joy-knob"><img src="thisman.png" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;"></div></div>
 </div>
 <div id="info">⌨️ 矢印キーで操作 | 📱 下のエリアでジョイスティック</div>
 
@@ -193,6 +193,10 @@
 const canvas = document.getElementById('gc');
 const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
+
+// ===== 画像読み込み =====
+const imgThisMan = new Image(); imgThisMan.src = 'thisman.png';
+const imgUnko    = new Image(); imgUnko.src    = 'unko.jpg';
 
 // ===== 共通 =====
 let state    = 'idle';
@@ -385,9 +389,15 @@ function addParticles(x,y,color,n){
 
 // ===== 描画ヘルパー =====
 function drawUnko(cx,cy,size,rot){
-  ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);ctx.scale(size/24,size/24);
-  ctx.font='24px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('💩',0,0);ctx.restore();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
+  const s=size*1.4;
+  if(imgUnko.complete && imgUnko.naturalWidth>0){
+    ctx.drawImage(imgUnko,-s/2,-s/2,s,s);
+  } else {
+    ctx.scale(size/24,size/24);ctx.font='24px serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('💩',0,0);
+  }
+  ctx.restore();
 }
 function drawBomb(cx,cy,rot){
   ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
@@ -409,8 +419,13 @@ function drawSpecialUnko(s){
 function drawSoloPlayer(p){
   if(p.invincible>0&&Math.floor(p.invincible/5)%2===0) return;
   ctx.save();ctx.translate(p.x,p.y);
-  ctx.font='28px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('😮',0,0);ctx.restore();
+  if(imgThisMan.complete && imgThisMan.naturalWidth>0){
+    ctx.drawImage(imgThisMan,-18,-18,36,36);
+  } else {
+    ctx.font='28px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('😮',0,0);
+  }
+  ctx.restore();
 }
 function draw4PPlayer(p){
   if(p.stun>0&&Math.floor(p.stun/5)%2===0) return;
