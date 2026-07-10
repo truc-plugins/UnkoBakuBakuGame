@@ -105,8 +105,55 @@
     white-space: nowrap;
   }
   #info { margin-top: 8px; font-size: clamp(10px, 2.5vw, 12px); color: #b09060; text-align: center; }
+  /* ジョイスティックゾーン（タッチデバイスのみ表示） */
+  #joy-zone {
+    display: none;
+    width: min(560px, 100vw - 16px);
+    height: 150px;
+    margin-top: 8px;
+    border-radius: 12px;
+    background: rgba(200,168,100,0.10);
+    border: 2px dashed rgba(200,168,100,0.35);
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+  }
+  #joy-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(11px, 3vw, 13px);
+    color: rgba(122,69,0,0.4);
+    pointer-events: none;
+  }
+  #joy-base {
+    display: none;
+    position: absolute;
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    border: 3px solid rgba(122,69,0,0.25);
+    background: rgba(255,248,225,0.5);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #joy-knob {
+    position: absolute;
+    width: 54px; height: 54px;
+    border-radius: 50%;
+    background: rgba(200,160,80,0.7);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
   @media (pointer: coarse) {
-    body { justify-content: flex-start; padding-top: 12px; overflow-y: auto; }
+    #joy-zone { display: flex; }
+    body { justify-content: flex-start; padding-top: 10px; overflow-y: auto; }
   }
 </style>
 </head>
@@ -136,7 +183,11 @@
     </div>
   </div>
 </div>
-<div id="info">📱 画面に指を置いてジョイスティック操作 | ⌨️ 矢印キーでも OK</div>
+<div id="joy-zone">
+  <div id="joy-hint">👆 ここに指を置いて動かす</div>
+  <div id="joy-base"><div id="joy-knob">😮</div></div>
+</div>
+<div id="info">⌨️ 矢印キーで操作 | 📱 下のエリアでジョイスティック</div>
 
 <script>
 const canvas = document.getElementById('gc');
@@ -165,37 +216,57 @@ const PCONF = [
   { emoji:'😝', color:'#9900bb', label:'P4', up:'Numpad8',  down:'Numpad2',    left:'Numpad4',   right:'Numpad6' },
 ];
 
-// ===== バーチャルジョイスティック =====
-const JOY_R = 55; // キャンバス座標でのジョイスティック半径
-let joy = null;   // null or { bx, by, dx, dy }  dx/dy は -1〜1
+// ===== バーチャルジョイスティック（キャンバス外ゾーン） =====
+const JOY_R = 48; // ノブの最大移動半径(px)
+let joy = null;   // { dx, dy } -1〜1
 
-function getCanvasPos(cx, cy) {
-  const r = canvas.getBoundingClientRect();
-  return { x:(cx-r.left)*(W/r.width), y:(cy-r.top)*(H/r.height) };
+const joyZone = document.getElementById('joy-zone');
+const joyBase = document.getElementById('joy-base');
+const joyKnob = document.getElementById('joy-knob');
+let joyOrigin = null; // { x, y } タッチ開始点（ゾーン相対）
+
+function joyPos(touch) {
+  const r = joyZone.getBoundingClientRect();
+  return { x: touch.clientX - r.left, y: touch.clientY - r.top };
 }
 
-canvas.addEventListener('touchstart', e => {
+function updateKnob() {
+  if(!joyOrigin) return;
+  const dx = (joy?.dx ?? 0) * JOY_R;
+  const dy = (joy?.dy ?? 0) * JOY_R;
+  joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+}
+
+joyZone.addEventListener('touchstart', e => {
   e.preventDefault();
   if(state !== 'playing' || gameMode !== 'solo') return;
-  const pos = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
-  joy = { bx: pos.x, by: pos.y, dx: 0, dy: 0 };
+  const pos = joyPos(e.touches[0]);
+  joyOrigin = pos;
+  joy = { dx: 0, dy: 0 };
+  joyBase.style.display = 'block';
+  joyBase.style.left = pos.x + 'px';
+  joyBase.style.top  = pos.y + 'px';
+  document.getElementById('joy-hint').style.opacity = '0';
+  updateKnob();
 }, { passive: false });
 
-canvas.addEventListener('touchmove', e => {
+joyZone.addEventListener('touchmove', e => {
   e.preventDefault();
-  if(state !== 'playing' || gameMode !== 'solo' || !joy) return;
-  const pos = getCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
-  const ddx = pos.x - joy.bx, ddy = pos.y - joy.by;
-  const d   = Math.sqrt(ddx*ddx + ddy*ddy);
-  if(d < 1) { joy.dx=0; joy.dy=0; return; }
+  if(!joyOrigin) return;
+  const pos = joyPos(e.touches[0]);
+  const ddx = pos.x - joyOrigin.x, ddy = pos.y - joyOrigin.y;
+  const d = Math.sqrt(ddx*ddx + ddy*ddy);
+  if(d < 1) { joy = { dx:0, dy:0 }; updateKnob(); return; }
   const clamped = Math.min(d, JOY_R);
-  joy.dx = (ddx/d) * (clamped/JOY_R);
-  joy.dy = (ddy/d) * (clamped/JOY_R);
+  joy = { dx: (ddx/d)*(clamped/JOY_R), dy: (ddy/d)*(clamped/JOY_R) };
+  updateKnob();
 }, { passive: false });
 
-canvas.addEventListener('touchend', e => {
+joyZone.addEventListener('touchend', e => {
   e.preventDefault();
-  joy = null;
+  joy = null; joyOrigin = null;
+  joyBase.style.display = 'none';
+  document.getElementById('joy-hint').style.opacity = '1';
 }, { passive: false });
 
 // ===== キーボード =====
@@ -257,7 +328,7 @@ function startGame(mode) {
     slowTimer=0; fastTimer=0; hellTimer=0;
     document.getElementById('hud-solo').style.display = '';
     document.getElementById('hud-4p').style.display   = 'none';
-    document.getElementById('info').textContent = '📱 画面に指を置いてジョイスティック操作 | ⌨️ 矢印キーでも OK';
+    document.getElementById('info').textContent = '⌨️ 矢印キーで操作 | 📱 下のエリアでジョイスティック';
     updateHUDSolo();
   } else {
     timeLeft=P4_TIME; timerFrame=0;
@@ -364,21 +435,6 @@ function drawParticles(){
   }
   ctx.globalAlpha=1;
   particles=particles.filter(p=>p.life>0);
-}
-function drawJoystick(){
-  if(!joy) return;
-  const knobX=joy.bx+joy.dx*JOY_R, knobY=joy.by+joy.dy*JOY_R;
-  ctx.save();
-  // ベースリング
-  ctx.globalAlpha=0.25;
-  ctx.strokeStyle='#7a4500';ctx.lineWidth=3;
-  ctx.beginPath();ctx.arc(joy.bx,joy.by,JOY_R,0,Math.PI*2);ctx.stroke();
-  // ノブ
-  ctx.globalAlpha=0.45;
-  ctx.fillStyle='#c8a060';
-  ctx.beginPath();ctx.arc(knobX,knobY,22,0,Math.PI*2);ctx.fill();
-  ctx.globalAlpha=1;
-  ctx.restore();
 }
 
 function dist(a,b){return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);}
@@ -531,7 +587,6 @@ function loopSolo(){
   for(const b of bombs) drawBomb(b.x,b.y,b.rot);
   for(const s of specialUnkos) drawSpecialUnko(s);
   drawSoloPlayer(p);
-  drawJoystick();
 
   // エフェクト残時間
   if(slowTimer>0||fastTimer>0||hellTimer>0){
