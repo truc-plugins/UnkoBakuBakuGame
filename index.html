@@ -195,8 +195,9 @@ const ctx    = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
 // ===== 画像読み込み =====
-const imgThisMan = new Image(); imgThisMan.src = 'thisman.png';
-const imgUnko    = new Image(); imgUnko.src    = 'unko.jpg';
+const imgThisMan  = new Image(); imgThisMan.src  = 'thisman.png';
+const imgUnko     = new Image(); imgUnko.src     = 'unko.jpg';
+const imgTepodon  = new Image(); imgTepodon.src  = 'テポドン.png';
 
 // ===== 共通 =====
 let state    = 'idle';
@@ -401,8 +402,13 @@ function drawUnko(cx,cy,size,rot){
 }
 function drawBomb(cx,cy,rot){
   ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
-  ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('💣',0,0);ctx.restore();
+  if(imgTepodon.complete && imgTepodon.naturalWidth>0){
+    ctx.drawImage(imgTepodon,-14,-18,28,36);
+  } else {
+    ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('💣',0,0);
+  }
+  ctx.restore();
 }
 function drawSpecialUnko(s){
   const pulse=0.8+0.2*Math.sin(frame*0.15);
