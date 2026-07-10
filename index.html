@@ -402,13 +402,8 @@ function drawUnko(cx,cy,size,rot){
 }
 function drawBomb(cx,cy,rot){
   ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
-  if(imgTepodon.complete && imgTepodon.naturalWidth>0){
-    ctx.drawImage(imgTepodon,-14,-18,28,36);
-  } else {
-    ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText('💣',0,0);
-  }
-  ctx.restore();
+  ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('💣',0,0);ctx.restore();
 }
 function drawSpecialUnko(s){
   const pulse=0.8+0.2*Math.sin(frame*0.15);
