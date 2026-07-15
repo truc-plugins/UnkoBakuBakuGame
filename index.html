@@ -475,7 +475,7 @@ function updateHUD4P(){
   if(gameMode==='4p-survival'){
     el.innerHTML=players4.map(p=>{
       const hearts=p.alive?'❤️'.repeat(p.lives):'💀';
-      return `<div style="color:${p.color};font-weight:700;opacity:${p.alive?1:0.4}">${p.emoji}${p.label}:<span style="font-weight:400">${hearts}</span></div>`;
+      return `<div style="color:${p.color};font-weight:700;opacity:${p.alive?1:0.4}">${p.emoji}${p.label}:<span style="font-weight:400">${hearts} ${p.score}pt</span></div>`;
     }).join('');
   } else {
     el.innerHTML=players4.map(p=>`<div style="color:${p.color};font-weight:700">${p.emoji}${p.label}:<span style="font-weight:400">${p.score}pt</span></div>`).join('')
