@@ -179,7 +179,8 @@
     <div id="title-ranking"></div>
     <div class="btn-row">
       <button onclick="startGame('solo')">🎮 ソロプレイ</button>
-      <button class="btn-4p" onclick="startGame('4p')">👥 4人対戦</button>
+      <button class="btn-4p" onclick="startGame('4p-score')">👥 4人対戦 ⏱スコア制</button>
+      <button class="btn-4p" onclick="startGame('4p-survival')">👥 4人対戦 💀サバイバル</button>
     </div>
   </div>
 </div>
@@ -341,7 +342,7 @@ function startGame(mode) {
       ...c,
       x: [W*0.25, W*0.75, W*0.25, W*0.75][i],
       y: [H*0.3,  H*0.3,  H*0.7,  H*0.7 ][i],
-      vx:0, vy:0, score:0, stun:0
+      vx:0, vy:0, score:0, stun:0, lives:3, alive:true
     }));
     document.getElementById('hud-solo').style.display = 'none';
     document.getElementById('hud-4p').style.display   = 'flex';
@@ -433,7 +434,9 @@ function draw4PPlayer(p){
   ctx.save();ctx.translate(p.x,p.y);
   ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillStyle=p.color;
   ctx.textBaseline='bottom';ctx.fillText(p.label,0,-16);
-  ctx.font='10px sans-serif';ctx.fillText(p.score+'pt',0,-6);
+  ctx.font='10px sans-serif';
+  const sub=gameMode==='4p-survival'?'❤️'.repeat(p.lives):p.score+'pt';
+  ctx.fillText(sub,0,-6);
   ctx.font='26px serif';ctx.textBaseline='middle';ctx.fillText(p.emoji,0,0);
   ctx.restore();
 }
@@ -469,8 +472,15 @@ function updateHUDSolo(){
 }
 function updateHUD4P(){
   const el=document.getElementById('hud-4p');
-  el.innerHTML=players4.map(p=>`<div style="color:${p.color};font-weight:700">${p.emoji}${p.label}:<span style="font-weight:400">${p.score}pt</span></div>`).join('')
-    +`<div style="color:#7a4500;font-weight:700">⏱<span id="timer-val">${timeLeft}</span>s</div>`;
+  if(gameMode==='4p-survival'){
+    el.innerHTML=players4.map(p=>{
+      const hearts=p.alive?'❤️'.repeat(p.lives):'💀';
+      return `<div style="color:${p.color};font-weight:700;opacity:${p.alive?1:0.4}">${p.emoji}${p.label}:<span style="font-weight:400">${hearts}</span></div>`;
+    }).join('');
+  } else {
+    el.innerHTML=players4.map(p=>`<div style="color:${p.color};font-weight:700">${p.emoji}${p.label}:<span style="font-weight:400">${p.score}pt</span></div>`).join('')
+      +`<div style="color:#7a4500;font-weight:700">⏱<span id="timer-val">${timeLeft}</span>s</div>`;
+  }
 }
 function updateTimer(){const el=document.getElementById('timer-val');if(el)el.textContent=timeLeft;}
 
@@ -486,12 +496,13 @@ function gameOverSolo(){
     ${rankingHTML(scores, isNew ? rank-1 : -1)}
     <div class="btn-row">
       <button onclick="startGame('solo')">もう一回！</button>
-      <button class="btn-4p" onclick="startGame('4p')">👥 4人対戦</button>
+      <button class="btn-4p" onclick="startGame('4p-score')">👥 4人対戦 ⏱スコア制</button>
+      <button class="btn-4p" onclick="startGame('4p-survival')">👥 4人対戦 💀サバイバル</button>
     </div>`;
   ov.style.display='flex';
 }
 
-// ===== タイムアップ（4P）=====
+// ===== タイムアップ（4Pスコア制）=====
 function timeUp(){
   state='over';
   const sorted=[...players4].sort((a,b)=>b.score-a.score);
@@ -501,7 +512,20 @@ function timeUp(){
   ov.innerHTML=`<h2>${sorted[0].emoji} ${sorted[0].label} の勝ち！！</h2>
     <p style="line-height:2">${rows}</p>
     <div class="btn-row">
-      <button class="btn-4p" onclick="startGame('4p')">もう一回！</button>
+      <button class="btn-4p" onclick="startGame('4p-score')">もう一回！</button>
+      <button onclick="startGame('solo')">🎮 ソロプレイ</button>
+    </div>`;
+  ov.style.display='flex';
+}
+
+// ===== サバイバル終了（4P）=====
+function survivalEnd(winner){
+  state='over';
+  const ov=document.getElementById('overlay');
+  ov.innerHTML=`<h2>🏆 ${winner.emoji} ${winner.label} の勝ち！！</h2>
+    <p>最後の生き残り！</p>
+    <div class="btn-row">
+      <button class="btn-4p" onclick="startGame('4p-survival')">もう一回！</button>
       <button onclick="startGame('solo')">🎮 ソロプレイ</button>
     </div>`;
   ov.style.display='flex';
@@ -511,8 +535,9 @@ function timeUp(){
 function loop(){
   if(state!=='playing') return;
   frame++;
-  if(gameMode==='solo') loopSolo();
-  else                  loop4P();
+  if(gameMode==='solo')         loopSolo();
+  else if(gameMode==='4p-score')loop4PScore();
+  else                          loop4PSurvival();
   animId=requestAnimationFrame(loop);
 }
 
@@ -615,8 +640,8 @@ function loopSolo(){
   }
 }
 
-// ===== 4Pループ =====
-function loop4P(){
+// ===== 4Pスコア制ループ =====
+function loop4PScore(){
   timerFrame++;
   if(timerFrame>=60){timerFrame=0;timeLeft--;updateTimer();}
   if(timeLeft<=0){timeUp();return;}
@@ -683,6 +708,85 @@ function loop4P(){
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(`⏱ ${timeLeft}`,W/2,H/2);
     ctx.restore();
+  }
+}
+
+// ===== 4Pサバイバルループ =====
+function loop4PSurvival(){
+  const alivePlayers=players4.filter(p=>p.alive);
+
+  for(const p of alivePlayers){
+    if(keys[p.up])    p.vy-=0.5;
+    if(keys[p.down])  p.vy+=0.5;
+    if(keys[p.left])  p.vx-=0.5;
+    if(keys[p.right]) p.vx+=0.5;
+    p.vx*=0.82;p.vy*=0.82;
+    const spd=Math.sqrt(p.vx**2+p.vy**2);
+    if(spd>3.0){p.vx=p.vx/spd*3.0;p.vy=p.vy/spd*3.0;}
+    p.x=Math.max(14,Math.min(W-14,p.x+p.vx));
+    p.y=Math.max(14,Math.min(H-14,p.y+p.vy));
+    if(p.stun>0) p.stun--;
+  }
+
+  for(const u of unkos){u.x+=u.vx;u.y+=u.vy;u.rot+=0.04;}
+  for(const b of bombs){b.x+=b.vx;b.y+=b.vy;b.rot+=0.06;}
+
+  unkos=unkos.filter(u=>{
+    if(u.x<-60||u.x>W+60||u.y<-60||u.y>H+60) return false;
+    for(const p of alivePlayers){
+      if(p.stun>0) continue;
+      if(dist(u,p)<18+u.size*0.4){
+        addParticles(u.x,u.y,p.color,8);return false;
+      }
+    }
+    return true;
+  });
+
+  bombs=bombs.filter(b=>{
+    if(b.x<-60||b.x>W+60||b.y<-60||b.y>H+60) return false;
+    for(const p of alivePlayers){
+      if(p.stun>0) continue;
+      if(dist(b,p)<18){
+        addParticles(b.x,b.y,'#ff6633',12);
+        p.lives--;p.stun=90;
+        if(p.lives<=0){
+          p.alive=false;
+          showMsg(`${p.emoji}${p.label} 脱落！💀`);
+        } else {
+          showMsg(`${p.emoji}${p.label} ドカン！💥 残り❤️${p.lives}`);
+        }
+        updateHUD4P();
+        const remaining=players4.filter(p=>p.alive);
+        if(remaining.length===1){
+          setTimeout(()=>survivalEnd(remaining[0]),600);
+          return false;
+        }
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // スポーン
+  if(frame%60===0) spawnUnko();
+  if(frame%90===0) spawnBomb();
+
+  // 描画
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#f0f8ff';ctx.fillRect(0,0,W,H);
+  drawGrid('#e0ecf8');drawParticles();
+  for(const u of unkos) drawUnko(u.x,u.y,u.size,u.rot);
+  for(const b of bombs) drawBomb(b.x,b.y,b.rot);
+  for(const p of players4){
+    if(!p.alive) continue;
+    draw4PPlayer(p);
+  }
+  // 脱落プレイヤーを半透明で表示
+  for(const p of players4){
+    if(p.alive) continue;
+    ctx.save();ctx.globalAlpha=0.25;ctx.translate(p.x,p.y);
+    ctx.font='26px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('💀',0,0);ctx.restore();
   }
 }
 
