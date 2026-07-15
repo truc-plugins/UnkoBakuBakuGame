@@ -519,11 +519,15 @@ function timeUp(){
 }
 
 // ===== サバイバル終了（4P）=====
-function survivalEnd(winner){
+function survivalEnd(){
   state='over';
+  const sorted=[...players4].sort((a,b)=>b.score-a.score);
+  const winner=sorted[0];
+  const medals=['🥇','🥈','🥉','4️⃣'];
+  const rows=sorted.map((p,i)=>`${medals[i]} ${p.emoji}${p.label}: ${p.score}pt${!p.alive?' 💀':''}`).join('<br>');
   const ov=document.getElementById('overlay');
   ov.innerHTML=`<h2>🏆 ${winner.emoji} ${winner.label} の勝ち！！</h2>
-    <p>最後の生き残り！</p>
+    <p style="line-height:2">${rows}</p>
     <div class="btn-row">
       <button class="btn-4p" onclick="startGame('4p-survival')">もう一回！</button>
       <button onclick="startGame('solo')">🎮 ソロプレイ</button>
@@ -736,7 +740,7 @@ function loop4PSurvival(){
     for(const p of alivePlayers){
       if(p.stun>0) continue;
       if(dist(u,p)<18+u.size*0.4){
-        addParticles(u.x,u.y,p.color,8);return false;
+        addParticles(u.x,u.y,p.color,8);p.score+=10;updateHUD4P();return false;
       }
     }
     return true;
@@ -758,7 +762,7 @@ function loop4PSurvival(){
         updateHUD4P();
         const remaining=players4.filter(p=>p.alive);
         if(remaining.length===1){
-          setTimeout(()=>survivalEnd(remaining[0]),600);
+          setTimeout(()=>survivalEnd(),600);
           return false;
         }
         return false;
